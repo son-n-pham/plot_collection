@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DOC Chart Generator (D3.js)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .input-group {
+        margin-bottom: 10px;
+      }
+      label {
+        display: inline-block;
+        width: 200px;
+      }
+      input[type='number'] {
+        width: 100px;
+      }
+      textarea {
+        width: 300px;
+        height: 80px; /* Increased height for more space */
+        resize: vertical; /* Allow vertical resizing */
+      }
+      button {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #chartContainer {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>DOC Chart Generator (D3.js)</h1>
+    <div class="input-group">
+      <label for="ropMin">ROP Min (ft/hr):</label>
+      <input type="number" id="ropMin" value="0" />
+    </div>
+    <div class="input-group">
+      <label for="ropMax">ROP Max (ft/hr):</label>
+      <input type="number" id="ropMax" value="300" />
+    </div>
+    <div class="input-group">
+      <label for="rpmMin">RPM Min:</label>
+      <input type="number" id="rpmMin" value="0" />
+    </div>
+    <div class="input-group">
+      <label for="rpmMax">RPM Max:</label>
+      <input type="number" id="rpmMax" value="300" />
+    </div>
+    <div class="input-group">
+      <label for="docValue">DOC Value (in/rev):</label>
+      <input type="number" id="docValue" value="0.15" step="0.01" />
+    </div>
+    <div class="input-group">
+      <label for="textAbove">Text Above Line:</label>
+      <textarea id="textAbove">
+DOC feature engaged\\
+Adjust RPM, WOB, & Flow to Minimize:\\
+-MSE (Whirl, balling, dysfunction) and\\
+-Torque Variation (Stick-slip)
+      </textarea>
+    </div>
+    <div class="input-group">
+      <label for="textBelow">Text Below Line:</label>
+      <textarea id="textBelow">
+DOC feature not engaged\\
+Increase WOB
+      </textarea>
+    </div>
+    <button onclick="generateChart()">Generate Chart</button>
+    <div id="chartContainer"></div>
+
+    <script>
+      function generateChart() {
+        const ropMin = parseFloat(document.getElementById('ropMin').value);
+        const ropMax = parseFloat(document.getElementById('ropMax').value);
+        const rpmMin = parseFloat(document.getElementById('rpmMin').value);
+        const rpmMax = parseFloat(document.getElementById('rpmMax').value);
+        const docValue = parseFloat(document.getElementById('docValue').value);
+        const textAbove = document.getElementById('textAbove').value;
+        const textBelow = document.getElementById('textBelow').value;
+
+        const margin = { top: 40, right: 40, bottom: 60, left: 60 };
+        const width = 700 - margin.left - margin.right;
+        const height = 500 - margin.top - margin.bottom;
+
+        d3.select('#chartContainer').selectAll('*').remove();
+
+        const svg = d3
+          .select('#chartContainer')
+          .append('svg')
+          .attr('width', width + margin.left + margin.right)
+          .attr('height', height + margin.top + margin.bottom)
+          .append('g')
+          .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const x = d3.scaleLinear().domain([rpmMin, rpmMax]).range([0, width]);
+
+        const y = d3.scaleLinear().domain([ropMin, ropMax]).range([height, 0]);
+
+        svg
+          .append('g')
+          .attr('transform', `translate(0,${height})`)
+          .call(d3.axisBottom(x));
+
+        svg.append('g').call(d3.axisLeft(y));
+
+        // Generate data
+        const data = [];
+        for (let rpm = rpmMin; rpm <= rpmMax; rpm += 5) {
+          if (rpm === 0) continue; // prevent division by zero
+          for (let rop = ropMin; rop <= ropMax; rop += 5) {
+            const doc = (rop * 12) / (rpm * 60);
+            data.push({ rpm, rop, doc });
+          }
+        }
+
+        // Plot points
+        svg
+          .selectAll('circle')
+          .data(data)
+          .enter()
+          .append('circle')
+          .attr('cx', d => x(d.rpm))
+          .attr('cy', d => y(d.rop))
+          .attr('r', 2)
+          .attr('fill', d => (d.doc < docValue ? 'yellow' : 'limegreen'));
+
+        // Add DOC line
+        const lineFunction = d3
+          .line()
+          .x(d => x(d.rpm))
+          .y(d => y(d.rop));
+
+        const lineData = [
+          { rpm: rpmMin, rop: (rpmMin * 60 * docValue) / 12 },
+          { rpm: rpmMax, rop: (rpmMax * 60 * docValue) / 12 },
+        ];
+
+        svg
+          .append('path')
+          .datum(lineData)
+          .attr('fill', 'none')
+          .attr('stroke', 'black')
+          .attr('stroke-width', 2)
+          .attr('d', lineFunction);
+
+        // Add labels
+        svg
+          .append('text')
+          .attr(
+            'transform',
+            `translate(${width / 2}, ${height + margin.top + 20})`
+          )
+          .style('text-anchor', 'middle')
+          .text('Rotary Speed (RPM)');
+
+        svg
+          .append('text')
+          .attr('transform', 'rotate(-90)')
+          .attr('y', 0 - margin.left)
+          .attr('x', 0 - height / 2)
+          .attr('dy', '1em')
+          .style('text-anchor', 'middle')
+          .text('Rate of Penetration (ft/hr)');
+
+        svg
+          .append('text')
+          .attr('x', width / 2)
+          .attr('y', 0 - margin.top / 2)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '16px')
+          .style('text-decoration', 'underline')
+          .text(`DOC Chart (DOC = ${docValue} in/rev)`);
+
+        // Add custom text boxes
+        function addTextBox(text, x, y, color) {
+          const lines =
+            text.split(
+              '\
+'
+            );
+          const boxPadding = 10;
+          const lineHeight = 20;
+          const boxWidth = 250;
+          const boxHeight = lines.length * lineHeight + 2 * boxPadding;
+          const textBox = svg
+            .append('g')
+            .attr('transform', `translate(${x},${y})`);
+
+          textBox
+            .append('rect')
+            .attr('x', -boxWidth / 2)
+            .attr('y', -boxHeight / 2)
+            .attr('width', boxWidth)
+            .attr('height', boxHeight)
+            .attr('fill', color)
+            .attr('opacity', 0.8)
+            .attr('stroke', 'black');
+
+          lines.forEach((line, i) => {
+            textBox
+              .append('text')
+              .attr('x', 0)
+              .attr(
+                'y',
+                -((lines.length - 1) * lineHeight) / 2 + i * lineHeight
+              )
+              .attr('text-anchor', 'middle')
+              .attr('dominant-baseline', 'middle')
+              .text(line);
+          });
+        }
+
+        addTextBox(textAbove, width * 0.25, height * 0.25, 'limegreen');
+        addTextBox(textBelow, width * 0.7, height * 0.7, 'yellow');
+      }
+
+      // Initial chart generation
+      generateChart();
+    </script>
+  </body>
+</html>
