@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_doc_chart(rop_min, rop_max, rpm_min, rpm_max, doc_value, font_size=20):
+def plot_doc_chart(rop_min, rop_max, rpm_min, rpm_max, doc_value, text_above_line, text_below_line, font_size=20):
     # Create arrays for RPM and ROP
     rpm = np.linspace(rpm_min, rpm_max, 1000)
     rop = np.linspace(rop_min, rop_max, 1000)
@@ -49,12 +49,12 @@ def plot_doc_chart(rop_min, rop_max, rpm_min, rpm_max, doc_value, font_size=20):
     lower_text_y = plot_height * 0.2
 
     ax.text(plot_width * 0.3, upper_text_y,
-            'DOC feature engaged\nAdjust RPM, WOB, & Flow to Minimize:\n-MSE (Whirl, balling, dysfunction) and\n-Torque Variation (Stick-slip)',
+            text_above_line,
             ha='center', va='center', fontsize=font_size,
             bbox=dict(facecolor='limegreen', alpha=0.8, edgecolor='black'))
 
     ax.text(plot_width * 0.7, lower_text_y,
-            f'DOC feature not engaged\nIncrease WOB',
+            text_below_line,
             ha='center', va='center', fontsize=font_size,
             bbox=dict(facecolor='yellow', alpha=0.8, edgecolor='black'))
 
@@ -77,6 +77,12 @@ def plot_doc_chart(rop_min, rop_max, rpm_min, rpm_max, doc_value, font_size=20):
     plt.show()
 
 
+text_above_line = 'DOC feature engaged\nAdjust RPM, WOB, & Flow to Minimize:\n-MSE (Whirl, balling, dysfunction) and\n-Torque Variation (Stick-slip)'
+text_below_line = 'DOC feature not engaged\nIncrease WOB'
+
 # Example usage with increased font size
 plot_doc_chart(rop_min=0, rop_max=300, rpm_min=0,
-               rpm_max=300, doc_value=0.15, font_size=20)
+               rpm_max=300, doc_value=0.15,
+               text_above_line=text_above_line,
+               text_below_line=text_below_line,
+               font_size=20)
